@@ -140,28 +140,10 @@ def process_election_data(input_file, output_file):
 
     # Replace <CR><LF> with \n for proper splitting
     raw_data = raw_data.replace('\r\n', '\n')
-    raw_data = raw_data.replace("SCHOOL\n          DISTRICT", "SCHOOL DISTRICT")
-
-    # Extract and remove header
-    header_match = re.search(r'SUMMARY.*?RUN DATE:(\d{2}/\d{2}/\d{2}).*?\n\n', raw_data, re.DOTALL)
-    election_date = ''
-    if header_match:
-        election_date = header_match.group(1)
-        print(election_date)
-        trimmed_out_national, start_index = strip_up_to_nonpartisan(raw_data)
-        if start_index > 0:
-            raw_data = trimmed_out_national
-        else:
-            raw_data = raw_data[header_match.end():]
-
-    # Remove footer
-    raw_data = re.sub(r'</PRE>\s*</HTML>', '', raw_data, flags=re.DOTALL)
+    election_date = "04/02/24"
 
     # Split data into blocks for each race
-    if start_index > 0:
-        race_blocks = raw_data.split('\n\n')
-    else:
-        race_blocks = raw_data.split('\n\n')[2:]
+    race_blocks = raw_data.split('\n\n')
 
     processed_data = []
 
@@ -175,16 +157,11 @@ def process_election_data(input_file, output_file):
 
         # Extract the race name and number of seats
         race_name = lines[0].strip()
-        seats_match = re.search(r'\(VOTE FOR\)\s+(\d+)', lines[1].strip())
-        if not seats_match:
-            seats_match = re.search(r'\(Vote for Not More Than \)\s+(\d+)', lines[1].strip())
-        if not seats_match:
-            seats_match = re.search(r'Vote for not more than\s+(\d+)', lines[1].strip())
+        seats_match = re.search(r'Vote For\s+(\d+)', lines[1].strip())
         if not seats_match:
             print("PROBLEM WITH", lines[1])
             print(lines)
             continue
-
         number_of_seats = int(seats_match[1])
 
         # Process candidate lines
@@ -192,14 +169,13 @@ def process_election_data(input_file, output_file):
         candidates = []
 
         for line in lines[2:]:
-            candidate_match = re.match(r'^(.*?)\.\s+\.*\s+(\d+[,.\d+]*)\s+(\d+[,.\d+]*)$', line)
+            candidate_match = re.match(r'^(.*?)\s+(\d+[,.\d+]*)$', line)
             if candidate_match:
                 candidate_name = fix_case(clean_candidate_name(candidate_match.group(1).strip()))
                 if candidate_name in standardized_names:
                     candidate_name = standardized_names[candidate_name]
                 votes_received = int(candidate_match.group(2).replace(',', ''))
-                percent_received = float(candidate_match.group(3))
-                candidates.append((candidate_name, votes_received, percent_received))
+                candidates.append((candidate_name, votes_received))
                 total_votes += votes_received
 
         # Sort candidates by votes received in descending order
@@ -208,10 +184,10 @@ def process_election_data(input_file, output_file):
         excluded_candidates = ['Write-in', 'Yes', 'No']
         alders = get_alders("alders.csv")
         # Append data for each candidate to the processed_data list
-        for i, (candidate_name, votes_received, percent_received) in enumerate(candidates):
+        for i, (candidate_name, votes_received) in enumerate(candidates):
+            percent_received = round((votes_received / total_votes) * 100, 1)
             elected = 1 if i < number_of_seats else 0
             if candidate_name not in excluded_candidates:
-                race_name = fix_case(race_name, fix_all = True)
                 jurisdiction = ""
                 office = ""
                 if race_name.startswith("Alderperson") and candidate_name in alders:
@@ -248,44 +224,14 @@ def process_election_data(input_file, output_file):
     return processed_data
 
 
-def process_html_files(directory_path):
-    """
-    Iterates over a directory and opens every file ending with ".html".
+file_path = "cleaned_election_results.txt"
+output_file = "election_results"
+print(f"Processing file: {file_path}")
+result = process_election_data(file_path, output_file)
+race_names = []
+for row in result:
+    race_names.append(row["Race Name"])
 
-    :param directory_path: Path to the directory to iterate over.
-    """
-    output_file = "election_results"
-    combined_list = []
-
-    try:
-        for filename in os.listdir(directory_path):
-            if filename.endswith(".html"):
-                file_path = os.path.join(directory_path, filename)
-                print(f"Processing file: {file_path}")
-                yearly_list = process_election_data(file_path, output_file)
-                combined_list.extend(yearly_list)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    with open("all_years.csv", 'w', newline='') as csvfile:
-        fieldnames = [
-            "Jurisdiction", "Office",
-            "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
-            "Percent Received", "Total Votes", "Elected", "Election Date"
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(combined_list)
-    race_names = []
-    for row in combined_list:
-        race_names.append(row["Race Name"])
-    race_names = list(set(race_names))
-    race_names.sort()
-
-    with open("race_names", 'w') as outfile:
-        for string in race_names:
-            outfile.write(string + '\n')
-
-
-# Example usage
-directory_path = "../election results"
-process_html_files(directory_path)
+with open("race_names_2024", 'w') as outfile:
+    for string in race_names:
+        outfile.write(string + '\n')
