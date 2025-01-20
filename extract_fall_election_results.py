@@ -11,18 +11,32 @@ def clean_candidate_name(name):
         name = name[:-1]
     while name.endswith('.  '):
         name = name[:-3]
-    return name.strip()
+    name = name.strip()
+    if name.lower().endswith("(rep)") or name.lower().endswith("(dem)") or name.lower().endswith("(ind)"):
+        name = name[:-6]
+    return name
 
 
 def is_excluded_race(race_name):
     exclusions = [
         "Court of Appeals Judge",
         "Justice of the Supreme Court",
-        # "Multi-jurisdictional Judge",
         "President of the United States",
         "Presidential Preference Vote",
         "State Superintendent",
-        "State Senator"
+        "State Senator",
+        "Attorney General",
+        "Attorney General Statewide",
+        "Governor /",
+        "Governor Statewide",
+        "Governor/lieutenant Governor",
+        "President Statewide",
+        "Representative in Congress",
+        "Representative to Assembly",
+        "Representative to the Assembly",
+        "Secretary of State",
+        "State Treasurer",
+        "United States Senator",
     ]
     for item in exclusions:
         if race_name.startswith(item):
@@ -175,6 +189,34 @@ def parse_race_name(race_name):
         office = f"Alderperson {parts[1].strip()}"
         jurisdiction = f"{parts[0].strip()}"
         return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("Clerk of Circuit Court"):
+        office = "Clerk of Circuit Court"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("County Clerk"):
+        office = "County Clerk"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("County Treasurer"):
+        office = "County Treasurer"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("District Attorney"):
+        office = "District Attorney"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("Register of Deeds"):
+        office = "Register of Deeds"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("Sheriff"):
+        office = "Sheriff"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
+    elif race_name.startswith("Treasurer"):
+        office = "County Treasurer"
+        jurisdiction = "Columbia County"
+        return {"office": office, "jurisdiction": jurisdiction}
     else:
         # Iterate over jurisdiction types to find a match
         for jurisdiction_type in jurisdiction_types:
@@ -187,7 +229,7 @@ def parse_race_name(race_name):
     return {"office": race_name.strip(), "jurisdiction": ""}
 
 
-def process_election_data(input_file, output_file = False):
+def process_election_data(input_file, output_file):
     with open(input_file, 'r') as file:
         raw_data = file.read()
 
@@ -294,20 +336,142 @@ def process_election_data(input_file, output_file = False):
 
     # Write processed data to a CSV file
     election_date = election_date.replace('/','.')
-    if output_file:
-        with open(output_file + '-' + election_date + ".csv", 'w', newline='') as csvfile:
-            fieldnames = [
-                "Jurisdiction", "Office",
-                "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
-                "Percent Received", "Total Votes", "Elected", "Election Date"
-            ]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(processed_data)
+    with open(output_file + '-' + election_date + ".csv", 'w', newline='') as csvfile:
+        fieldnames = [
+            "Jurisdiction", "Office",
+            "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
+            "Percent Received", "Total Votes", "Elected", "Election Date"
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(processed_data)
     return processed_data
 
 
-def process_2024_election_data(input_file, output_file = False):
+def process_fall_election_data(input_file, output_file):
+    with open(input_file, 'r') as file:
+        raw_data = file.read()
+
+    # Replace <CR><LF> with \n for proper splitting
+    raw_data = raw_data.replace('\r\n', '\n')
+    raw_data = raw_data.replace("SCHOOL\n          DISTRICT", "SCHOOL DISTRICT")
+
+    # Extract and remove header
+    header_match = re.search(r'SUMMARY.*?RUN DATE:(\d{2}/\d{2}/\d{2}).*?\n\n', raw_data, re.DOTALL | re.IGNORECASE)
+    election_date = ''
+    if header_match:
+        election_date = header_match.group(1)
+        print(election_date)
+        trimmed_out_national, start_index = strip_up_to_nonpartisan(raw_data)
+        if start_index > 0:
+            raw_data = trimmed_out_national
+        else:
+            raw_data = raw_data[header_match.end():]
+
+    # Remove footer
+    raw_data = re.sub(r'</PRE>\s*</HTML>', '', raw_data, flags=re.DOTALL)
+
+    # Split data into blocks for each race
+    if start_index > 0:
+        race_blocks = raw_data.split('\n\n')
+    else:
+        race_blocks = raw_data.split('\n\n')[2:]
+
+    processed_data = []
+
+    jurisdictions = get_jurisdictions("jurisdictions.csv")
+    standardized_names = get_candidate_standard_names("standard_names.csv")
+    for block in race_blocks:
+        lines = block.strip().split('\n')
+
+        if len(lines) < 2:
+            continue
+
+        # Extract the race name and number of seats
+        race_name = lines[0].strip()
+        seats_match = re.search(r'\(VOTE FOR\)\s+(\d+)', lines[1].strip())
+        if not seats_match:
+            seats_match = re.search(r'\(Vote for Not More Than \)\s+(\d+)', lines[1].strip())
+        if not seats_match:
+            seats_match = re.search(r'Vote for not more than\s+(\d+)', lines[1].strip())
+        if not seats_match:
+            seats_match = re.search(r'Vote for Not More than\s+(\d+)', lines[1].strip())
+        if not seats_match:
+            seats_match = re.search(r'VOTE FOR\s+(\d+)', lines[1].strip())
+        if not seats_match:
+            print("PROBLEM WITH", lines[1])
+            print(lines)
+            continue
+
+        number_of_seats = int(seats_match[1])
+
+        # Process candidate lines
+        total_votes = 0
+        candidates = []
+
+        for line in lines[2:]:
+            candidate_match = re.match(r'^(.*?)\.\s+\.*\s+(\d+[,.\d+]*)\s+(\d+[,.\d+]*)$', line)
+            if candidate_match:
+                candidate_name = fix_case(clean_candidate_name(candidate_match.group(1).strip()))
+                if candidate_name in standardized_names:
+                    candidate_name = standardized_names[candidate_name]
+                votes_received = int(candidate_match.group(2).replace(',', ''))
+                percent_received = float(candidate_match.group(3))
+                candidates.append((candidate_name, votes_received, percent_received))
+                total_votes += votes_received
+
+        # Sort candidates by votes received in descending order
+        candidates.sort(key=lambda x: x[1], reverse=True)
+
+        excluded_candidates = ['Write-in', 'Yes', 'No']
+        alders = get_alders("alders.csv")
+        # Append data for each candidate to the processed_data list
+        for i, (candidate_name, votes_received, percent_received) in enumerate(candidates):
+            elected = 1 if i < number_of_seats else 0
+            race_name = fix_case(race_name, fix_all = True)
+            if candidate_name not in excluded_candidates and not is_excluded_race(race_name):
+                jurisdiction = ""
+                office = ""
+                if race_name.startswith("Alderperson") and candidate_name in alders:
+                    jurisdiction = alders[candidate_name]
+                    office = race_name
+                else:
+                    race_fields = parse_race_name(race_name)
+                    jurisdiction = race_fields['jurisdiction']
+                    office = race_fields['office']
+                # Standard naming convention for jurisdicitons
+                if jurisdiction in standardized_names:
+                    jurisdiction = standardized_names[jurisdiction]
+                if office in standardized_names:
+                    office = standardized_names[office]
+                processed_data.append({
+                    "Jurisdiction": jurisdiction,
+                    "Office": office,
+                    "Race Name": race_name,
+                    "Number of Seats": number_of_seats,
+                    "Candidate Name": candidate_name,
+                    "Votes Received": votes_received,
+                    "Percent Received": percent_received,
+                    "Total Votes": total_votes,
+                    "Elected": elected,
+                    "Election Date": election_date
+                })
+
+    # Write processed data to a CSV file
+    election_date = election_date.replace('/','.')
+    with open(output_file + '-' + election_date + ".csv", 'w', newline='') as csvfile:
+        fieldnames = [
+            "Jurisdiction", "Office",
+            "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
+            "Percent Received", "Total Votes", "Elected", "Election Date"
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(processed_data)
+    return processed_data
+
+
+def process_2024_election_data(input_file, output_file):
     """
     The election report for 2024 was formatted differently, so it needs a different
     processing function.
@@ -395,45 +559,39 @@ def process_2024_election_data(input_file, output_file = False):
 
     # Write processed data to a CSV file
     election_date = election_date.replace('/','.')
-    if output_file:
-        with open(output_file + '-' + election_date + ".csv", 'w', newline='') as csvfile:
-            fieldnames = [
-                "Jurisdiction", "Office",
-                "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
-                "Percent Received", "Total Votes", "Elected", "Election Date"
-            ]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerows(processed_data)
+    with open(output_file + '-' + election_date + ".csv", 'w', newline='') as csvfile:
+        fieldnames = [
+            "Jurisdiction", "Office",
+            "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
+            "Percent Received", "Total Votes", "Elected", "Election Date"
+        ]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(processed_data)
     return processed_data
 
 
-def process_html_files(directory_path):
+def process_fall_files(directory_path, testfilename):
     """
     Iterates over a directory and opens every file ending with ".html".
 
     :param directory_path: Path to the directory to iterate over.
     """
-    # output_file = "election_results" # Use this to get a separate CSV for each year
-    output_file = False
+    output_file = "election_results"
     combined_list = []
 
     try:
         for filename in os.listdir(directory_path):
+        # for filename in [testfilename]:
             if filename.endswith(".html"):
                 file_path = os.path.join(directory_path, filename)
                 print(f"Processing file: {file_path}")
-                yearly_list = process_election_data(file_path, output_file)
+                yearly_list = process_fall_election_data(file_path, output_file)
                 combined_list.extend(yearly_list)
     except Exception as e:
         print(f"An error occurred: {e}")
-    # Now do 2024
-    file_path = "cleaned_election_results.txt"
-    print(f"Processing file: {file_path}")
-    yearly_list = process_2024_election_data(file_path, output_file)
-    combined_list.extend(yearly_list)
 
-    with open("all_years.csv", 'w', newline='') as csvfile:
+    with open("all_fall_years.csv", 'w', newline='') as csvfile:
         fieldnames = [
             "Jurisdiction", "Office",
             "Race Name", "Number of Seats", "Candidate Name", "Votes Received",
@@ -442,17 +600,8 @@ def process_html_files(directory_path):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(combined_list)
-    race_names = []
-    for row in combined_list:
-        race_names.append(row["Race Name"])
-    race_names = list(set(race_names))
-    race_names.sort()
-
-    with open("race_names", 'w') as outfile:
-        for string in race_names:
-            outfile.write(string + '\n')
 
 
 # Example usage
-directory_path = "../election results"
-process_html_files(directory_path)
+directory_path = "../fall_special_election_results"
+process_fall_files(directory_path, "EL45-121106.html")

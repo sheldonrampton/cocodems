@@ -1,25 +1,33 @@
-import os
+from datetime import date, timedelta
+import calendar
 
-def process_html_files(directory_path):
+def local_election_dates(year, term_years):
     """
-    Iterates over a directory and opens every file ending with ".html".
+    Calculate the election date, office start date, and term end date for local elections in Columbia County, Wisconsin.
 
-    :param directory_path: Path to the directory to iterate over.
+    Args:
+        year (int): Year of the election.
+        term_years (int): Number of years for the elected term.
+
+    Returns:
+        tuple: Election date (datetime.date), office start date (datetime.date), term end date (datetime.date)
     """
-    try:
-        for filename in os.listdir(directory_path):
-            if filename.endswith(".html"):
-                file_path = os.path.join(directory_path, filename)
-                print(f"Processing file: {file_path}")
-                
-                # with open(file_path, 'r') as file:
-                #     content = file.read()
-                #     # Perform processing on the file content if needed
-                #     print(f"Content of {filename[:50]}...\n")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # Find the first Tuesday in April for the election date
+    april_first = date(year, 4, 1)
+    election_date = april_first + timedelta(days=(1 - april_first.weekday() + 7) % 7)
 
-# Example usage
-directory_path = "../election results"
+    # Calculate the fourth Monday of April for the office start date
+    fourth_monday_offset = 21 + (calendar.MONDAY - april_first.weekday() + 7) % 7
+    office_start_date = april_first + timedelta(days=fourth_monday_offset)
 
-process_html_files(directory_path)
+    # Calculate the term end date by adding the term length in years
+    april_first_term_end = date(year + term_years, 4, 1)
+    reelection_date = april_first_term_end + timedelta(days=(1 - april_first_term_end.weekday() + 7) % 7)
+    fourth_monday_offset = 21 + (calendar.MONDAY - april_first_term_end.weekday() + 7) % 7
+    office_end_date = april_first_term_end + timedelta(days=fourth_monday_offset)
+
+    return election_date, office_start_date, reelection_date, office_end_date
+
+# Example usage:
+print(local_election_dates(2024, 2))
+print(local_election_dates(2024, 3))
