@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ office.office_full_name }}</title>
+</head>
+<body>
+    <h1>{{ office.office_full_name }}</h1>
+    <p>Office Name: {{ office.office_name }}</p>
+    <p>Seats: {{ office.seats }}</p>
+    <p>Term Years: {{ office.term_years }}</p>
+    <p>Term Start Month: {{ month_name(office.term_start_month) }}</p>
+    <p>Election Month: {{ month_name(office.election_month) }}</p>
+    <p>Email: {{ office.email }}</p>
+    <p>Phone: {{ office.phone }}</p>
+    <p>Address: {{ office.address }}</p>
+    <p>City: {{ office.city }}</p>
+    <p>State: {{ office.state }}</p>
+    <p>Zip: {{ office.zip }}</p>
+    <p>Website: <a href="{{ office.website }}">{{ office.website }}</a></p>
+</body>
+</html>

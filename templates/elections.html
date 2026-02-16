@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Elections</title>
+    <script>
+        function sortTable(column) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentOrder = urlParams.get('order') || 'asc';
+            const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            window.location.search = `sort=${column}&order=${newOrder}`;
+        }
+    </script>
+</head>
+<body>
+    <h1>Elections</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th><a href="javascript:void(0);" onclick="sortTable('election_name')">Election Name</a></th>
+                <th><a href="javascript:void(0);" onclick="sortTable('election_date')">Election Date</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for election in elections %}
+            <tr>
+                <td><a href="/election_races/{{ election.election_id }}">{{ election.election_name }}</a></td>
+                <td>{{ election.election_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

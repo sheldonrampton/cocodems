@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ race.race_name }}</title>
+</head>
+<body>
+    <h1>{{ race.race_name }}</h1>
+    <p>Jurisdiction: {{ race.jurisdiction }}</p>
+    <p>Office Name: {{ race.office_name }}</p>
+    <p>Seats: {{ race.seats }}</p>
+    <p>Total Votes: {{ race.total_votes }}</p>
+    <p>Term Years: {{ race.term_years }}</p>
+    <p>Term Start Date: {{ race.term_start_date }}</p>
+    <p>Reelection Date: {{ race.reelection_date }}</p>
+    <p>Term End Date: {{ race.term_end_date }}</p>
+
+    <h2>Campaigns</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Campaign Name</th>
+                <th>Votes Received</th>
+                <th>Percent Received</th>
+                <th>Total Votes</th>
+                <th>Elected</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campaign in campaigns %}
+            <tr>
+                <td><a href="{{ url_for('individual', contact_id=campaign.contact_id) }}">{{ campaign.campaign_name }}</a></td>
+                <td>{{ campaign.votes_received }}</td>
+                <td>{{ campaign.percent_received }}%</td>
+                <td>{{ campaign.total_votes }}</td>
+                <td>{{ 'Won' if campaign.elected == 1 else 'Lost' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

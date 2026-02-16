@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Offices</title>
+</head>
+<body>
+    <h1>Offices</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Jurisdiction</th>
+                <th>Office</th>
+                <th>Seats</th>
+                <th>Term Years</th>
+                <th>Election Month</th>
+                <th>Term Start Month</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for office in offices %}
+            <tr>
+                <td><a href="{{ url_for('jurisdiction_details', jurisdiction_id=office.jurisdiction_id) }}">{{ office.jurisdiction }}</a></td>
+                <td><a href="{{ url_for('office_details', office_id=office.office_id) }}">{{ office.office_name }}</a></td>
+                <td>{{ office.seats }}</td>
+                <td>{{ office.term_years }}</td>
+                <td>{{ month_name(office.election_month) }}</td>
+                <td>{{ month_name(office.term_start_month) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

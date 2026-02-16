@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ jurisdiction.jurisdiction_name }}</title>
+</head>
+<body>
+    <h1>{{ jurisdiction.jurisdiction_name }}</h1>
+    <p>Type: {{ jurisdiction.jurisdiction_type if jurisdiction.jurisdiction_type else '' }}</p>
+    <p>Email: {{ jurisdiction.email if jurisdiction.email else '' }}</p>
+    <p>Phone: {{ jurisdiction.phone if jurisdiction.phone else '' }}</p>
+    <p>Address: {{ jurisdiction.address if jurisdiction.address else '' }}</p>
+    <p>City: {{ jurisdiction.city if jurisdiction.city else '' }}</p>
+    <p>State: {{ jurisdiction.state if jurisdiction.state else '' }}</p>
+    <p>Zip: {{ jurisdiction.zip if jurisdiction.zip else '' }}</p>
+    <p>Website: <a href="{{ jurisdiction.website }}">{{ jurisdiction.website if jurisdiction.website else '' }}</a></p>
+
+
+    <h2>Offices</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Office Name</th>
+                <th>Current Officeholders</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for office in offices %}
+            <tr>
+                <td><a href="{{ url_for('office_details', office_id=office.office_id) }}">{{ office.office_name }}</a></td>
+                <td>
+                    {% for holder in office.current_officeholders %}
+                        <a href="{{ url_for('individual', contact_id=holder.contact_id) }}">{{ holder.candidate_name }}</a>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

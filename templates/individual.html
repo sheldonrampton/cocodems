@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ individual.first_name }} {{ individual.last_name }}</title>
+</head>
+<body>
+    <h1>{{ individual.first_name }} {{ individual.middle_name if individual.middle_name else '' }} {{ individual.last_name }}</h1>
+    <p>Email: {{ individual.email if individual.email else '' }}</p>
+    <p>Phone: {{ individual.phone if individual.phone else '' }}</p>
+    <p>Address: {{ individual.address if individual.address else '' }}</p>
+    <p>City: {{ individual.city if individual.city else '' }}</p>
+    <p>Zip: {{ individual.zip if individual.zip else '' }}</p>
+    <p>State: {{ individual.state if individual.state else '' }}</p>
+    <p>Candidate Status: {{ individual.candidate_status if individual.candidate_status else '' }}</p>
+    <p>Party Affiliation: {{ individual.party_affiliation if individual.party_affiliation else '' }}</p>
+    <p>Democratic Alignment: {{ individual.democratic_alignment if individual.democratic_alignment else '' }}</p>
+    <p>Area: {{ individual.area if individual.area else '' }}</p>
+    <p>Notes: {{ individual.notes if individual.notes else '' }}</p>
+    <a href="{{ url_for('update_individual', contact_id=individual.contact_id) }}"><button>Update</button></a>
+
+    <h2>Campaigns</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Campaign Name</th>
+                <th>Votes Received</th>
+                <th>Percent Received</th>
+                <th>Total Votes</th>
+                <th>Elected</th>
+                <th>Election Date</th>
+                <th>Term Start Date</th>
+                <th>Reelection Date</th>
+                <th>Term End Date</th>
+                <th>Race Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for campaign in campaigns %}
+            <tr>
+                <td>{{ campaign.campaign_name }}</td>
+                <td>{{ campaign.votes_received }}</td>
+                <td>{{ campaign.percent_received }}%</td>
+                <td>{{ campaign.total_votes }}</td>
+                <td>{{ 'Won' if campaign.elected == 1 else 'Lost' }}</td>
+                <td>{{ campaign.election_date }}</td>
+                <td>{{ campaign.term_start_date }}</td>
+                <td>{{ campaign.reelection_date }}</td>
+                <td>{{ campaign.term_end_date }}</td>
+                <td><a href="{{ url_for('race_details', race_id=campaign.race_id) }}"><button>Race Details</button></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

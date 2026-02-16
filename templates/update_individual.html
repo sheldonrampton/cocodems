@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Update {{ individual.first_name }} {{ individual.last_name }}</title>
+</head>
+<body>
+    <h1>Update {{ individual.first_name }} {{ individual.last_name }}</h1>
+    <form method="POST">
+        <label for="first_name">First Name:</label>
+        <input type="text" id="first_name" name="first_name" value="{{ individual.first_name or '' }}"><br>
+        <label for="middle_name">Middle Name:</label>
+        <input type="text" id="middle_name" name="middle_name" value="{{ individual.middle_name or '' }}"><br>
+        <label for="last_name">Last Name:</label>
+        <input type="text" id="last_name" name="last_name" value="{{ individual.last_name or '' }}"><br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" value="{{ individual.email or '' }}"><br>
+        <label for="phone">Phone:</label>
+        <input type="text" id="phone" name="phone" value="{{ individual.phone or '' }}"><br>
+        <label for="address">Address:</label>
+        <input type="text" id="address" name="address" value="{{ individual.address or '' }}"><br>
+        <label for="city">City:</label>
+        <input type="text" id="city" name="city" value="{{ individual.city or '' }}"><br>
+        <label for="zip">Zip:</label>
+        <input type="text" id="zip" name="zip" value="{{ individual.zip or '' }}"><br>
+        <label for="state">State:</label>
+        <input type="text" id="state" name="state" value="{{ individual.state or '' }}"><br>
+        <label for="candidate_status">Candidate Status:</label>
+        <input type="text" id="candidate_status" name="candidate_status" value="{{ individual.candidate_status or '' }}"><br>
+        <label for="party_affiliation">Party Affiliation:</label>
+        <input type="text" id="party_affiliation" name="party_affiliation" value="{{ individual.party_affiliation or '' }}"><br>
+        <label for="democratic_alignment">Democratic Alignment:</label>
+        <input type="text" id="democratic_alignment" name="democratic_alignment" value="{{ individual.democratic_alignment or '' }}"><br>
+        <label for="area">Area:</label>
+        <input type="text" id="area" name="area" value="{{ individual.area or '' }}"><br>
+        <label for="notes">Notes:</label>
+        <textarea id="notes" name="notes">{{ individual.notes or '' }}</textarea><br>
+        <button type="submit">Update</button>
+    </form>
+</body>
+</html>

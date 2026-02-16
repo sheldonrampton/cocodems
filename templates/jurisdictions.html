@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jurisdictions</title>
+</head>
+<body>
+    <h1>Jurisdictions</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th><a href="?sort=jurisdiction_name&order={{ 'desc' if sort_column == 'jurisdiction_name' and sort_order == 'asc' else 'asc' }}">Jurisdiction Name</a></th>
+                <th><a href="?sort=jurisdiction_type&order={{ 'desc' if sort_column == 'jurisdiction_type' and sort_order == 'asc' else 'asc' }}">Jurisdiction Type</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for jurisdiction in jurisdictions %}
+            <tr>
+                <td><a href="{{ url_for('jurisdiction_details', jurisdiction_id=jurisdiction.jurisdiction_id) }}">{{ jurisdiction.jurisdiction_name }}</a></td>
+                <td>{{ jurisdiction.jurisdiction_type }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

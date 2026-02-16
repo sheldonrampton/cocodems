@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ election.election_name }}</title>
+</head>
+<body>
+    <h1>{{ election.election_name }}</h1>
+    <p>Date: {{ election.election_date }}</p>
+
+    <h2>Races</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th><a href="?sort=race_name&order={{ 'desc' if sort_column == 'race_name' and sort_order == 'asc' else 'asc' }}">Race Name</a></th>
+                <th><a href="?sort=seats&order={{ 'desc' if sort_column == 'seats' and sort_order == 'asc' else 'asc' }}">Seats</a></th>
+                <th><a href="?sort=total_votes&order={{ 'desc' if sort_column == 'total_votes' and sort_order == 'asc' else 'asc' }}">Total Votes</a></th>
+                <th><a href="?sort=term_years&order={{ 'desc' if sort_column == 'term_years' and sort_order == 'asc' else 'asc' }}">Term Years</a></th>
+                <th>Winner(s)</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for race in races %}
+            <tr>
+                <td>{{ race.race_name }}</td>
+                <td>{{ race.seats }}</td>
+                <td>{{ race.total_votes }}</td>
+                <td>{{ race.term_years }}</td>
+                <td>
+                    {% for winner in race.winners %}
+                        <a href="{{ url_for('individual', contact_id=winner.contact_id) }}">{{ winner.candidate_name }}</a>{% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td><a href="{{ url_for('race_details', race_id=race.race_id) }}"><button>Details</button></a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
