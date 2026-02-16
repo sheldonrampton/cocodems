@@ -4,9 +4,14 @@ from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file if it exists
-# Override any existing environment variables with .env values
-load_dotenv(override=True)
+_shared_dotenv_path = os.getenv(
+    "COCODEMS_ENV_FILE",
+    os.path.expanduser("~/.config/cocodems_elections/.env"),
+)
+if os.path.exists(_shared_dotenv_path):
+    load_dotenv(dotenv_path=_shared_dotenv_path, override=True)
+else:
+    load_dotenv(override=True)
 
 app = Flask(__name__)
 
