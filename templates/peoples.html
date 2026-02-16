@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>People</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include '_nav.html' %}
+    <h1>People</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th><a href="?sort=full_name&order={{ 'desc' if sort_column == 'full_name' and sort_order == 'asc' else 'asc' }}">Name</a></th>
+                <th><a href="?sort=current_jurisdiction&order={{ 'desc' if sort_column == 'current_jurisdiction' and sort_order == 'asc' else 'asc' }}">Current Jurisdiction</a></th>
+                <th><a href="?sort=current_office&order={{ 'desc' if sort_column == 'current_office' and sort_order == 'asc' else 'asc' }}">Current Office</a></th>
+                <th><a href="?sort=party_affiliation&order={{ 'desc' if sort_column == 'party_affiliation' and sort_order == 'asc' else 'asc' }}">Party</a></th>
+                <th><a href="?sort=candidate_status&order={{ 'desc' if sort_column == 'candidate_status' and sort_order == 'asc' else 'asc' }}">Status</a></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for person in peoples %}
+            <tr>
+                <td><a href="{{ url_for('individual', contact_id=person.contact_id) }}">{{ person.full_name }}</a></td>
+                <td>{{ person.current_jurisdiction or '' }}</td>
+                <td>{{ person.current_office or '' }}</td>
+                <td>{{ person.party_affiliation or '' }}</td>
+                <td>{{ person.candidate_status or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

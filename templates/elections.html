@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Elections</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script>
         function sortTable(column) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -12,6 +13,7 @@
     </script>
 </head>
 <body>
+    {% include '_nav.html' %}
     <h1>Elections</h1>
     <table border="1">
         <thead>

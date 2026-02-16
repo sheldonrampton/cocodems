@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ individual.first_name }} {{ individual.last_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    {% include '_nav.html' %}
     <h1>{{ individual.first_name }} {{ individual.middle_name if individual.middle_name else '' }} {{ individual.last_name }}</h1>
-    <p>Email: {{ individual.email if individual.email else '' }}</p>
+    <h2>Contact Information</h2>
+    <p><strong>Email:</strong> {{ individual.email if individual.email else '' }}</p>
     <p>Phone: {{ individual.phone if individual.phone else '' }}</p>
     <p>Address: {{ individual.address if individual.address else '' }}</p>
     <p>City: {{ individual.city if individual.city else '' }}</p>

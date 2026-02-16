@@ -209,6 +209,65 @@ def update_individual(contact_id):
 
         return render_template('update_individual.html', individual=individual)
 
+@app.route('/people')
+def people():
+    """Render the people page."""
+    sort_column = request.args.get('sort', 'full_name')
+    sort_order = request.args.get('order', 'asc')
+
+    sort_map = {
+        'full_name': 'i.full_name',
+        'current_jurisdiction': 'coalesce(c.current_jurisdiction, \'\')',
+        'current_office': 'coalesce(c.current_office, \'\')',
+        'party_affiliation': 'coalesce(i.party_affiliation, \'\')',
+        'candidate_status': 'coalesce(i.candidate_status, \'\')',
+    }
+    if sort_column not in sort_map:
+        sort_column = 'full_name'
+    if sort_order not in ['asc', 'desc']:
+        sort_order = 'asc'
+
+    conn = get_db_connection()
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(f"""
+            WITH current_service AS (
+                SELECT
+                    contact_id,
+                    string_agg(DISTINCT jurisdiction, ', ' ORDER BY jurisdiction) AS current_jurisdiction,
+                    string_agg(DISTINCT office_name, ', ' ORDER BY office_name) AS current_office
+                FROM campaigns
+                WHERE elected = 1
+                  AND term_start_date IS NOT NULL
+                  AND term_end_date IS NOT NULL
+                  AND CURRENT_DATE >= term_start_date::date
+                  AND CURRENT_DATE <= term_end_date::date
+                GROUP BY contact_id
+            )
+            SELECT
+                i.contact_id,
+                i.full_name,
+                i.party_affiliation,
+                i.candidate_status,
+                c.current_jurisdiction,
+                c.current_office
+            FROM individuals i
+            LEFT JOIN current_service c ON c.contact_id = i.contact_id
+            ORDER BY {sort_map[sort_column]} {sort_order};
+        """)
+        peoples_data = cursor.fetchall()
+    conn.close()
+
+    return render_template(
+        'peoples.html',
+        peoples=peoples_data,
+        sort_column=sort_column,
+        sort_order=sort_order,
+    )
+
+@app.route('/peoples')
+def peoples_redirect():
+    return redirect(url_for('people'))
+
 @app.route('/jurisdictions')
 def jurisdictions():
     """Render the jurisdictions page."""

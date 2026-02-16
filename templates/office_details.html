@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ office.office_full_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    {% include '_nav.html' %}
     <h1>{{ office.office_full_name }}</h1>
     <p>Office Name: {{ office.office_name }}</p>
     <p>Seats: {{ office.seats }}</p>
