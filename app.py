@@ -3,6 +3,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
+from datetime import datetime
+from datetime import date, timedelta
+import calendar
 
 _shared_dotenv_path = os.getenv(
     "COCODEMS_ENV_FILE",
@@ -63,6 +66,52 @@ def elections():
         sort_order=sort_order
     )
 
+@app.route('/election/add', methods=['GET', 'POST'])
+def add_election():
+    """Render and handle the add election form."""
+    if request.method == 'POST':
+        election_name = (request.form.get('election_name') or '').strip() or None
+        election_date_str = (request.form.get('election_date') or '').strip()
+
+        if not election_date_str:
+            return "Election date is required", 400
+
+        try:
+            election_date = datetime.strptime(election_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return "Invalid election date", 400
+
+        election_id = int(election_date.strftime('%Y%m%d'))
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO elections (election_id, election_name, election_date)
+                    VALUES (%s, %s, %s);
+                    """,
+                    (election_id, election_name, election_date),
+                )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            pgcode = getattr(e, 'pgcode', None)
+            if pgcode == '23505':
+                return render_template(
+                    'add_election.html',
+                    error=f"An election for {election_date.strftime('%Y-%m-%d')} already exists.",
+                    election_name=election_name or '',
+                    election_date=election_date.strftime('%Y-%m-%d'),
+                ), 400
+            return f"Error adding election: {e}", 500
+
+        conn.close()
+        return redirect(url_for('elections'))
+
+    return render_template('add_election.html')
+
 @app.route('/election_races/<int:election_id>')
 def election_races(election_id):
     """Render the election detail page for specific election races."""
@@ -105,7 +154,204 @@ def election_races(election_id):
     if not election:
         return "Election not found", 404
 
-    return render_template('election_races.html', election=election, races=races, sort_column=sort_column, sort_order=sort_order)
+    return render_template('election_races.html', election=election, races=races, election_id=election_id, sort_column=sort_column, sort_order=sort_order)
+
+
+def _first_tuesday_in_april(year: int) -> date:
+    april_first = date(year, 4, 1)
+    days_until_tuesday = (calendar.TUESDAY - april_first.weekday() + 7) % 7
+    return april_first + timedelta(days=days_until_tuesday)
+
+
+def _fourth_monday_in_april(year: int) -> date:
+    april_first = date(year, 4, 1)
+    fourth_monday_offset = 21 + (calendar.MONDAY - april_first.weekday() + 7) % 7
+    return april_first + timedelta(days=fourth_monday_offset)
+
+
+@app.route('/add_race/<int:election_id>', methods=['GET', 'POST'])
+def add_race(election_id):
+    """Render and handle the add race form."""
+    conn = get_db_connection()
+    with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT election_name, election_date::date AS election_date
+            FROM elections
+            WHERE election_id = %s;
+            """,
+            (election_id,),
+        )
+        election = cursor.fetchone()
+
+        cursor.execute(
+            """
+            SELECT DISTINCT office_full_name
+            FROM offices
+            WHERE office_full_name IS NOT NULL AND office_full_name <> ''
+            ORDER BY office_full_name;
+            """
+        )
+        office_full_names = cursor.fetchall()
+
+    conn.close()
+
+    if not election:
+        return "Election not found", 404
+
+    if request.method == 'POST':
+        selected_office_full_name = (request.form.get('office_full_name') or '').strip()
+        if not selected_office_full_name:
+            return render_template(
+                'add_race.html',
+                election={
+                    'election_name': election['election_name'],
+                    'election_date': election['election_date'].strftime('%m/%d/%Y'),
+                },
+                office_full_names=office_full_names,
+                selected_office_full_name=selected_office_full_name,
+                error='Office is required.',
+            ), 400
+
+        election_year = election['election_date'].year
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        office_full_name,
+                        jurisdiction,
+                        jurisdiction_id,
+                        office_name,
+                        office_name_id,
+                        office_id,
+                        term_years,
+                        MIN(seats) AS seats
+                    FROM offices
+                    WHERE office_full_name = %s
+                    GROUP BY
+                        office_full_name,
+                        jurisdiction,
+                        jurisdiction_id,
+                        office_name,
+                        office_name_id,
+                        office_id,
+                        term_years
+                    ORDER BY MIN(seats) ASC
+                    LIMIT 1;
+                    """,
+                    (selected_office_full_name,),
+                )
+                office = cursor.fetchone()
+
+                if not office:
+                    conn.rollback()
+                    conn.close()
+                    return render_template(
+                        'add_race.html',
+                        election={
+                            'election_name': election['election_name'],
+                            'election_date': election['election_date'].strftime('%m/%d/%Y'),
+                        },
+                        office_full_names=office_full_names,
+                        selected_office_full_name=selected_office_full_name,
+                        error='Office not found.',
+                    ), 400
+
+                seats = int(office['seats']) if office['seats'] is not None else None
+                term_years = int(office['term_years']) if office['term_years'] is not None else None
+                if seats is None or term_years is None:
+                    conn.rollback()
+                    conn.close()
+                    return render_template(
+                        'add_race.html',
+                        election={
+                            'election_name': election['election_name'],
+                            'election_date': election['election_date'].strftime('%m/%d/%Y'),
+                        },
+                        office_full_names=office_full_names,
+                        selected_office_full_name=selected_office_full_name,
+                        error='Office is missing seats and/or term years.',
+                    ), 400
+
+                race_name = f"{election_year} {office['office_full_name']}"
+
+                term_start_date = _fourth_monday_in_april(election_year)
+                reelection_date = _first_tuesday_in_april(election_year + term_years)
+                term_end_date = _fourth_monday_in_april(election_year + term_years)
+
+                race_id = int(f"{election_id}{int(office['office_id'])}")
+
+                cursor.execute(
+                    """
+                    INSERT INTO races (
+                        race_id,
+                        race_name,
+                        jurisdiction,
+                        jurisdiction_id,
+                        office_name,
+                        office_name_id,
+                        office_id,
+                        election_id,
+                        seats,
+                        total_votes,
+                        term_years,
+                        term_start_date,
+                        reelection_date,
+                        term_end_date
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """,
+                    (
+                        race_id,
+                        race_name,
+                        office['jurisdiction'],
+                        office['jurisdiction_id'],
+                        office['office_name'],
+                        office['office_name_id'],
+                        office['office_id'],
+                        election_id,
+                        seats,
+                        0,
+                        term_years,
+                        term_start_date,
+                        reelection_date,
+                        term_end_date,
+                    ),
+                )
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            pgcode = getattr(e, 'pgcode', None)
+            if pgcode == '23505':
+                return render_template(
+                    'add_race.html',
+                    election={
+                        'election_name': election['election_name'],
+                        'election_date': election['election_date'].strftime('%m/%d/%Y'),
+                    },
+                    office_full_names=office_full_names,
+                    selected_office_full_name=selected_office_full_name,
+                    error='A race with that ID already exists for this election/office.',
+                ), 400
+            return f"Error adding race: {e}", 500
+
+        conn.close()
+        return redirect(url_for('election_races', election_id=election_id))
+
+    return render_template(
+        'add_race.html',
+        election={
+            'election_name': election['election_name'],
+            'election_date': election['election_date'].strftime('%m/%d/%Y'),
+        },
+        office_full_names=office_full_names,
+        selected_office_full_name='',
+    )
 
 @app.route('/race_details/<int:race_id>')
 def race_details(race_id):
@@ -166,6 +412,66 @@ def individual(contact_id):
         return "Individual not found", 404
 
     return render_template('individual.html', individual=individual, campaigns=campaigns)
+
+@app.route('/individual/add', methods=['GET', 'POST'])
+def add_individual():
+    """Render and handle the add individual form."""
+    if request.method == 'POST':
+        data = request.form
+
+        first_name = (data.get('first_name') or '').strip() or None
+        middle_name = (data.get('middle_name') or '').strip() or None
+        last_name = (data.get('last_name') or '').strip() or None
+
+        name_parts = [p for p in [first_name, middle_name, last_name] if p]
+        full_name = ' '.join(name_parts) if name_parts else None
+
+        email = (data.get('email') or '').strip() or None
+        phone = (data.get('phone') or '').strip() or None
+        address = (data.get('address') or '').strip() or None
+        city = (data.get('city') or '').strip() or None
+        state = (data.get('state') or '').strip() or 'WI'
+        zip_code = (data.get('zip') or '').strip() or None
+
+        candidate_status = (data.get('candidate_status') or '').strip() or None
+        party_affiliation = (data.get('party_affiliation') or '').strip() or None
+        democratic_alignment = (data.get('democratic_alignment') or '').strip() or None
+        area = (data.get('area') or '').strip() or None
+        notes = (data.get('notes') or '').strip() or None
+
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("LOCK TABLE individuals IN EXCLUSIVE MODE;")
+                cursor.execute("SELECT COALESCE(MAX(contact_id), 0) + 1 FROM individuals;")
+                contact_id = cursor.fetchone()[0]
+
+                cursor.execute(
+                    """
+                    INSERT INTO individuals (
+                        contact_id, first_name, middle_name, last_name, full_name,
+                        email, phone, address, city, state, zip,
+                        candidate_status, party_affiliation, democratic_alignment, area, notes
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                    """,
+                    (
+                        contact_id, first_name, middle_name, last_name, full_name,
+                        email, phone, address, city, state, zip_code,
+                        candidate_status, party_affiliation, democratic_alignment, area, notes,
+                    ),
+                )
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            return f"Error adding individual: {e}", 500
+
+        conn.close()
+        return redirect(url_for('individual', contact_id=contact_id))
+
+    return render_template('add_individual.html', default_state='WI')
 
 @app.route('/update/individual/<int:contact_id>', methods=['GET', 'POST'])
 def update_individual(contact_id):

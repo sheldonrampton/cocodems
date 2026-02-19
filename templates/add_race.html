@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Race</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include '_nav.html' %}
+    <h1>Add Race</h1>
+
+    <p>Election: {{ election.election_name }}</p>
+    <p>Date: {{ election.election_date }}</p>
+
+    {% if error %}
+    <p><strong>{{ error }}</strong></p>
+    {% endif %}
+
+    <form method="POST">
+        <p>
+            <label for="office_full_name">Office:</label><br>
+            <select id="office_full_name" name="office_full_name" required>
+                <option value="">-- Select an office --</option>
+                {% for office in office_full_names %}
+                <option value="{{ office.office_full_name }}" {% if selected_office_full_name == office.office_full_name %}selected{% endif %}>{{ office.office_full_name }}</option>
+                {% endfor %}
+            </select>
+        </p>
+
+        <p>
+            <button type="submit">Add Race</button>
+        </p>
+    </form>
+</body>
+</html>

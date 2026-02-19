@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Individual</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include '_nav.html' %}
+    <h1>Add Individual</h1>
+
+    <form method="POST">
+        <p>
+            <label for="first_name">First Name:</label><br>
+            <input type="text" id="first_name" name="first_name">
+        </p>
+        <p>
+            <label for="middle_name">Middle Name:</label><br>
+            <input type="text" id="middle_name" name="middle_name">
+        </p>
+        <p>
+            <label for="last_name">Last Name:</label><br>
+            <input type="text" id="last_name" name="last_name">
+        </p>
+
+        <p>
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" name="email">
+        </p>
+        <p>
+            <label for="phone">Phone:</label><br>
+            <input type="text" id="phone" name="phone">
+        </p>
+
+        <p>
+            <label for="address">Address:</label><br>
+            <input type="text" id="address" name="address">
+        </p>
+        <p>
+            <label for="city">City:</label><br>
+            <input type="text" id="city" name="city">
+        </p>
+        <p>
+            <label for="state">State:</label><br>
+            <input type="text" id="state" name="state" value="{{ default_state }}">
+        </p>
+        <p>
+            <label for="zip">ZIP:</label><br>
+            <input type="text" id="zip" name="zip">
+        </p>
+
+        <p>
+            <label for="candidate_status">Candidate Status:</label><br>
+            <input type="text" id="candidate_status" name="candidate_status">
+        </p>
+        <p>
+            <label for="party_affiliation">Party Affiliation:</label><br>
+            <input type="text" id="party_affiliation" name="party_affiliation">
+        </p>
+        <p>
+            <label for="democratic_alignment">Democratic Alignment:</label><br>
+            <input type="text" id="democratic_alignment" name="democratic_alignment">
+        </p>
+        <p>
+            <label for="area">Area:</label><br>
+            <input type="text" id="area" name="area">
+        </p>
+        <p>
+            <label for="notes">Notes:</label><br>
+            <textarea id="notes" name="notes" rows="4" cols="50"></textarea>
+        </p>
+
+        <p>
+            <button type="submit">Add Individual</button>
+        </p>
+    </form>
+</body>
+</html>

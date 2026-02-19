@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Election</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include '_nav.html' %}
+    <h1>Add Election</h1>
+
+    {% if error %}
+    <p><strong>{{ error }}</strong></p>
+    {% endif %}
+
+    <form method="POST">
+        <p>
+            <label for="election_name">Election Name:</label><br>
+            <input type="text" id="election_name" name="election_name" value="{{ election_name if election_name else '' }}">
+        </p>
+        <p>
+            <label for="election_date">Election Date:</label><br>
+            <input type="date" id="election_date" name="election_date" value="{{ election_date if election_date else '' }}" required>
+        </p>
+        <p>
+            <button type="submit">Add Election</button>
+        </p>
+    </form>
+</body>
+</html>
