@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 from datetime import datetime
 from datetime import date, timedelta
 import calendar
+import subprocess
+import tempfile
+import shutil
 
 _shared_dotenv_path = os.getenv(
     "COCODEMS_ENV_FILE",
@@ -32,6 +35,166 @@ def get_db_connection():
     """Establish connection to the PostgreSQL database."""
     conn = psycopg2.connect(**DATABASE)
     return conn
+
+
+def _admin_token_is_valid(req) -> bool:
+    expected = os.getenv('ADMIN_TOKEN')
+    if not expected:
+        return False
+
+    supplied = (
+        (req.headers.get('X-Admin-Token') or '').strip()
+        or (req.args.get('token') or '').strip()
+        or (req.form.get('admin_token') or '').strip()
+    )
+    return bool(supplied) and supplied == expected
+
+
+def _pg_env() -> dict:
+    env = os.environ.copy()
+    if DATABASE.get('password'):
+        env['PGPASSWORD'] = str(DATABASE['password'])
+    if os.getenv('PGSSLMODE'):
+        env['PGSSLMODE'] = os.getenv('PGSSLMODE')
+    return env
+
+
+def _preferred_bin(explicit_env_var: str, default_name: str, brew_opt_path: str) -> str:
+    override = (os.getenv(explicit_env_var) or '').strip()
+    if override:
+        return override
+
+    # Prefer a version-matched Homebrew client if present.
+    if os.path.exists(brew_opt_path):
+        return brew_opt_path
+
+    found = shutil.which(default_name)
+    return found or default_name
+
+
+_BACKUP_TABLES = [
+    'public.campaigns',
+    'public.elections',
+    'public.individuals',
+    'public.jurisdictions',
+    'public.office_names',
+    'public.offices',
+    'public.races',
+]
+
+
+@app.route('/admin')
+def admin():
+    """Render the admin page."""
+    return render_template('admin.html')
+
+
+@app.route('/admin/backup', methods=['POST'])
+def admin_backup():
+    """Create a SQL backup and return it as a download."""
+    if not _admin_token_is_valid(request):
+        return "Forbidden", 403
+
+    with tempfile.NamedTemporaryFile(prefix='cocodems_backup_', suffix='.sql', delete=False) as tf:
+        backup_path = tf.name
+
+    try:
+        pg_dump_bin = _preferred_bin('PG_DUMP_BIN', 'pg_dump', '/opt/homebrew/opt/postgresql@16/bin/pg_dump')
+        cmd = [
+            pg_dump_bin,
+            '-h', str(DATABASE.get('host') or ''),
+            '-p', str(DATABASE.get('port') or ''),
+            '-U', str(DATABASE.get('user') or ''),
+            '-d', str(DATABASE.get('dbname') or ''),
+            '--no-owner',
+            '--no-privileges',
+            '--clean',
+            '--if-exists',
+            '-f', backup_path,
+        ]
+        for t in _BACKUP_TABLES:
+            cmd.extend(['--table', t])
+        subprocess.run(cmd, check=True, env=_pg_env(), capture_output=True, text=True)
+
+        download_name = f"{DATABASE.get('dbname') or 'database'}_backup.sql"
+        return send_file(backup_path, as_attachment=True, download_name=download_name)
+    except subprocess.CalledProcessError as e:
+        try:
+            os.unlink(backup_path)
+        except Exception:
+            pass
+        detail = (e.stderr or e.stdout or str(e)).strip()
+        return f"Error creating backup: {detail}", 500
+    except Exception as e:
+        try:
+            os.unlink(backup_path)
+        except Exception:
+            pass
+        return f"Error creating backup: {e}", 500
+
+
+@app.route('/admin/reload', methods=['POST'])
+def admin_reload():
+    """Reload the database from an uploaded SQL dump (destructive)."""
+    if not _admin_token_is_valid(request):
+        return "Forbidden", 403
+
+    backup_file = request.files.get('backup_file')
+    if not backup_file:
+        return render_template('admin.html', error='Backup file is required.'), 400
+
+    with tempfile.NamedTemporaryFile(prefix='cocodems_restore_', suffix='.sql', delete=False) as tf:
+        restore_path = tf.name
+        backup_file.save(restore_path)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            for t in _BACKUP_TABLES:
+                cursor.execute(f'DROP TABLE IF EXISTS {t} CASCADE;')
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        try:
+            os.unlink(restore_path)
+        except Exception:
+            pass
+        return f"Error preparing database for reload: {e}", 500
+    conn.close()
+
+    try:
+        psql_bin = _preferred_bin('PSQL_BIN', 'psql', '/opt/homebrew/opt/postgresql@16/bin/psql')
+        cmd = [
+            psql_bin,
+            '-h', str(DATABASE.get('host') or ''),
+            '-p', str(DATABASE.get('port') or ''),
+            '-U', str(DATABASE.get('user') or ''),
+            '-d', str(DATABASE.get('dbname') or ''),
+            '-v', 'ON_ERROR_STOP=1',
+            '-f', restore_path,
+        ]
+        subprocess.run(cmd, check=True, env=_pg_env(), capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        try:
+            os.unlink(restore_path)
+        except Exception:
+            pass
+        detail = (e.stderr or e.stdout or str(e)).strip()
+        return f"Error reloading database: {detail}", 500
+    except Exception as e:
+        try:
+            os.unlink(restore_path)
+        except Exception:
+            pass
+        return f"Error reloading database: {e}", 500
+
+    try:
+        os.unlink(restore_path)
+    except Exception:
+        pass
+
+    return render_template('admin.html', message='Database reload complete.')
 
 @app.route('/')
 def index():
@@ -686,4 +849,4 @@ def office_details(office_id):
 app.jinja_env.globals.update(month_name=month_name)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=int(os.getenv('PORT', '5000')))
