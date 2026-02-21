@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include '_nav.html' %}
+    <h1>Admin</h1>
+
+    {% if error %}
+    <p><strong>{{ error }}</strong></p>
+    {% endif %}
+
+    {% if message %}
+    <p><strong>{{ message }}</strong></p>
+    {% endif %}
+
+    <h2>Database backup</h2>
+    <form method="POST" action="{{ url_for('admin_backup') }}">
+        <p>
+            <label for="admin_token_backup">Admin token:</label><br>
+            <input type="password" id="admin_token_backup" name="admin_token" required>
+        </p>
+        <p>
+            <button type="submit">Database backup</button>
+        </p>
+    </form>
+
+    <h2>Reload database</h2>
+    <form method="POST" action="{{ url_for('admin_reload') }}" enctype="multipart/form-data">
+        <p>
+            <label for="admin_token_reload">Admin token:</label><br>
+            <input type="password" id="admin_token_reload" name="admin_token" required>
+        </p>
+        <p>
+            <label for="backup_file">Backup file (.sql):</label><br>
+            <input type="file" id="backup_file" name="backup_file" accept=".sql" required>
+        </p>
+        <p>
+            <button type="submit">Reload database</button>
+        </p>
+    </form>
+
+    <h2>Clean election candidates</h2>
+    <form method="POST" action="{{ url_for('admin_clean_candidates') }}" enctype="multipart/form-data">
+        <p>
+            <label for="admin_token_clean">Admin token:</label><br>
+            <input type="password" id="admin_token_clean" name="admin_token" required>
+        </p>
+        <p>
+            <label for="candidates_file">Candidates file (.csv):</label><br>
+            <input type="file" id="candidates_file" name="candidates_file" accept=".csv" required>
+        </p>
+        <p>
+            <button type="submit">Clean election candidates</button>
+        </p>
+    </form>
+
+    <h2>Enhance individuals</h2>
+    <form method="POST" action="{{ url_for('enhance_individuals') }}">
+        <p>
+            <label for="admin_token_enhance">Admin token:</label><br>
+            <input type="password" id="admin_token_enhance" name="admin_token" required>
+        </p>
+        <p>
+            <button type="submit">Enhance individuals</button>
+        </p>
+    </form>
+</body>
+</html>

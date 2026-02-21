@@ -43,5 +43,20 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <h2>Upload races</h2>
+    <form method="POST" action="{{ url_for('upload_election_races', election_id=election_id) }}" enctype="multipart/form-data">
+        <p>
+            <label for="admin_token_upload_races">Admin token:</label><br>
+            <input type="password" id="admin_token_upload_races" name="admin_token" required>
+        </p>
+        <p>
+            <label for="races_file">Races file (.csv):</label><br>
+            <input type="file" id="races_file" name="races_file" accept=".csv" required>
+        </p>
+        <p>
+            <button type="submit">Upload races</button>
+        </p>
+    </form>
 </body>
 </html>

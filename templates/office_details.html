@@ -9,6 +9,16 @@
     {% include '_nav.html' %}
     <h1>{{ office.office_full_name }}</h1>
     <p>Office Name: {{ office.office_name }}</p>
+    <p>
+        Current officeholder:
+        {% if officeholders and officeholders|length > 0 %}
+            {% for h in officeholders %}
+                <a href="{{ url_for('individual', contact_id=h.contact_id) }}">{{ h.candidate_name }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+        {% else %}
+            (unknown)
+        {% endif %}
+    </p>
     <p>Seats: {{ office.seats }}</p>
     <p>Term Years: {{ office.term_years }}</p>
     <p>Term Start Month: {{ month_name(office.term_start_month) }}</p>
@@ -20,5 +30,19 @@
     <p>State: {{ office.state }}</p>
     <p>Zip: {{ office.zip }}</p>
     <p>Website: <a href="{{ office.website }}">{{ office.website }}</a></p>
+
+    <h2>Races</h2>
+    {% if races and races|length > 0 %}
+        <ol>
+            {% for r in races %}
+                <li>
+                    {% if r.election_date %}{{ r.election_date.strftime('%m/%d/%Y') }}:{% endif %}
+                    <a href="{{ url_for('race_details', race_id=r.race_id) }}">{{ r.race_name }}</a>
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <p>No races found for this office.</p>
+    {% endif %}
 </body>
 </html>
